@@ -14,18 +14,20 @@ services:
           memory: 256M
     ports:
       # DNS Ports
-      - "53:53/tcp"
-      - "53:53/udp"
+      - 53/tcp
+      - 53/udp
+      # DHCP
+      - 67/udp
       # Dashboard
-      - "3000:3000/tcp" # first setup
-      - "8080:80/tcp" # web ui -> http://localhost:8080/admin
+      - 3000/tcp # first setup
+      - 80/tcp # web ui -> http://10.0.0.225/admin
 # RECOMMENDED: Uncomment and adapt if you want to persist pihole configurations after restart
     volumes:
-      - ./workdir:/opt/adguardhome/work
-      - ./confdir:/opt/adguardhome/conf
+      - /mnt/fast/app-config/adguard-home/data:/opt/adguardhome/work
+      - /mnt/fast/app-config/adguard-home/config:/opt/adguardhome/conf
     networks:
       dnsvlan:
-        ipv4_address: 192.168.1.225 # <-- use this ip as dns when connected to pihole_dns_network (i.e. within a docker network)
+        ipv4_address: 10.0.0.225 # <-- use this ip as dns when connected to pihole_dns_network (i.e. within a docker network)
   
   unbound:
     build: ./unbound
@@ -37,15 +39,17 @@ services:
       - "5335:53/udp"
     networks:
       dnsvlan:
-        ipv4_address: 192.168.1.226 # <-- this is used by pihole as upstream DNS
+        ipv4_address: 10.0.0.224 # <-- this is used by pihole as upstream DNS
 
 networks:
   # Define a custom subnet for pihole so that unbound can be an upstream DNS on port 53
   dnsvlan:
     name: dnsvlan
     driver: macvlan
+    driver_opts:
+      parent: eno1                        # If open vSwitch is enabled use ovs_eth0 (or ovs_eth1 etc.)
     ipam:
       config:
-        - subnet: 192.168.1.0/24
-          gateway: 192.168.1.1
-          ip_range: 192.168.1.224/30 # 172.21.200.1 - 172.21.200.254
+        - subnet: 10.0.0.0/24
+          gateway: 10.0.0.1
+          ip_range: 10.0.0.224/30 # 10.0.0.224 - 10.0.0.225
